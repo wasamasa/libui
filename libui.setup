@@ -1,0 +1,7 @@
+(compile -s -O3 -d1 "libui.scm" -J -lui)
+(compile -s "libui.import.scm")
+
+(install-extension
+ 'libui
+ '("libui.so" "libui.import.so")
+ '((version "0.0.1")))

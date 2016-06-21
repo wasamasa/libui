@@ -1,0 +1,8 @@
+((synopsis "Bindings to the libui library")
+ (author "Vasilij Schneidermann")
+ (license "MIT")
+ (category ui)
+ (depends matchable)
+ (foreign-depends "libui")
+ (files "libui.scm" "libui.meta" "libui.setup" "libui.release-info"
+        "LICENSE" "README.rst"))
