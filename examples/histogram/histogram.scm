@@ -3,6 +3,9 @@
 
 (import (prefix libui-draw draw:))
 
+(ui:margined? #t)
+(ui:padded? #t)
+
 (define (ints->floats ints)
   (map (lambda (x) (/ x 255)) ints))
 
@@ -177,15 +180,12 @@
 (ui:handler-set! #f 'should-quit on-should-quit)
 
 (set! main-window (ui:new-window "libui Histogram Example" 640 480 #t))
-(ui:window-margined?-set! main-window #t)
 (ui:handler-set! main-window 'closing on-closing)
 
 (define hbox (ui:new-horizontal-box))
-(ui:box-padded?-set! hbox #t)
 (ui:window-child-set! main-window (ui:->control hbox))
 
 (define vbox (ui:new-vertical-box))
-(ui:box-padded?-set! vbox #t)
 (ui:box-append! hbox (ui:->control vbox))
 
 (let loop ((i 0))

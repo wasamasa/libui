@@ -1,6 +1,7 @@
 (module libui
   (init! uninit! main quit!
    handler-set!
+   margined? padded?
    new-window window-child-set! window-margined?-set!
    new-button
    new-horizontal-box new-vertical-box box-append! box-padded?-set!
@@ -210,6 +211,7 @@
 
 (define uiNewTab (foreign-lambda uiTab* "uiNewTab"))
 (define uiTabAppend (foreign-lambda void "uiTabAppend" uiTab* nonnull-c-string uiControl*))
+(define uiTabNumPages (foreign-lambda int "uiTabNumPages" uiTab*))
 (define uiTabSetMargined (foreign-lambda void "uiTabSetMargined" uiTab* int bool))
 
 (define uiNewGroup (foreign-lambda uiGroup* "uiNewGroup" nonnull-c-string))
@@ -428,6 +430,9 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
 
 ;; widgets
 
+(define margined? (make-parameter #f))
+(define padded? (make-parameter #f))
+
 (define (define-widget constructor wrapper #!rest args)
   (let* ((widget* (apply constructor args))
          (handlers (make-hash-table eqv? eqv?-hash))
@@ -440,7 +445,9 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
     (wrapper widget*)))
 
 (define (new-window title width height #!optional menubar?)
-  (define-widget uiNewWindow make-window title width height menubar?))
+  (let ((window (define-widget uiNewWindow make-window title width height menubar?)))
+    (window-margined?-set! window (margined?))
+    window))
 
 (define (window-child-set! window child)
   (let ((window* (window-pointer window))
@@ -483,14 +490,21 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
 (define (tab-append! tab text control)
   (let ((tab* (tab-pointer tab))
         (control* (control-pointer control)))
-    (uiTabAppend tab* text control*)))
+    (uiTabAppend tab* text control*)
+    (tab-margined?-set! tab (sub1 (tab-pages-length tab)) (margined?))))
+
+(define (tab-pages-length tab)
+  (let ((tab* (tab-pointer tab)))
+    (uiTabNumPages tab*)))
 
 (define (tab-margined?-set! tab index margined?)
   (let ((tab* (tab-pointer tab)))
     (uiTabSetMargined tab* index margined?)))
 
 (define (new-group text)
-  (define-widget* uiNewGroup make-group text))
+  (let ((group (define-widget* uiNewGroup make-group text)))
+    (group-margined?-set! group (margined?))
+    group))
 
 (define (group-child-set! group child)
   (let ((group* (group-pointer group))
@@ -604,7 +618,9 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
     (uiColorButtonSetColor color-button* r g b a)))
 
 (define (new-form)
-  (define-widget* uiNewForm make-form))
+  (let ((form (define-widget* uiNewForm make-form)))
+    (form-padded?-set! form (padded?))
+    form))
 
 (define (form-append! form text control #!optional stretchy?)
   (let ((form* (form-pointer form))
@@ -616,7 +632,9 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
     (uiFormSetPadded form* padded?)))
 
 (define (new-grid)
-  (define-widget* uiNewGrid make-grid))
+  (let ((grid (define-widget* uiNewGrid make-grid)))
+    (grid-padded?-set! grid (padded?))
+    grid))
 
 (define (grid-append! grid control left top xspan yspan hexpand halign vexpand valign)
   (let ((grid* (grid-pointer grid))
@@ -632,12 +650,16 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
 ;; boxes
 
 (define (new-horizontal-box)
-  (let ((box* (uiNewHorizontalBox)))
-    (make-box box*)))
+  (let* ((box* (uiNewHorizontalBox))
+         (box (make-box box*)))
+    (box-padded?-set! box (padded?))
+    box))
 
 (define (new-vertical-box)
-  (let ((box* (uiNewVerticalBox)))
-    (make-box box*)))
+  (let* ((box* (uiNewVerticalBox))
+         (box (make-box box*)))
+    (box-padded?-set! box (padded?))
+    box))
 
 (define (box-append! box control #!optional stretchy?)
   (let ((box* (box-pointer box))

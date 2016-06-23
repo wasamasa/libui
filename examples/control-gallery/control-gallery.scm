@@ -1,5 +1,8 @@
 (use (prefix libui ui:))
 
+(ui:margined? #t)
+(ui:padded? #t)
+
 (define (on-closing _window)
   (ui:quit!)
   #t)
@@ -15,10 +18,8 @@
         (form #f))
 
     (set! vbox (ui:new-vertical-box))
-    (ui:box-padded?-set! vbox #t)
 
     (set! hbox (ui:new-horizontal-box))
-    (ui:box-padded?-set! hbox #t)
     (ui:box-append! vbox (ui:->control hbox))
 
     (ui:box-append! hbox (ui:->control (ui:new-button "Button")))
@@ -28,11 +29,9 @@
     (ui:box-append! vbox (ui:->control (ui:new-horizontal-separator)))
 
     (set! group (ui:new-group "Entries"))
-    (ui:group-margined?-set! group #t)
     (ui:box-append! vbox (ui:->control group) #t)
 
     (set! form (ui:new-form))
-    (ui:form-padded?-set! form #t)
     (ui:group-child-set! group (ui:->control form))
 
     (ui:form-append! form "Entry" (ui:->control (ui:new-entry)))
@@ -65,14 +64,11 @@
         (radio-buttons #f))
 
     (set! hbox (ui:new-horizontal-box))
-    (ui:box-padded?-set! hbox #t)
 
     (set! group (ui:new-group "Numbers"))
-    (ui:group-margined?-set! group #t)
     (ui:box-append! hbox (ui:->control group) #t)
 
     (set! vbox (ui:new-vertical-box))
-    (ui:box-padded?-set! vbox #t)
     (ui:group-child-set! group (ui:->control vbox))
 
     (set! spinbox (ui:new-spinbox 0 100))
@@ -89,11 +85,9 @@
     (ui:box-append! vbox (ui:->control in-progress))
 
     (set! group (ui:new-group "Lists"))
-    (ui:group-margined?-set! group #t)
     (ui:box-append! hbox (ui:->control group) #t)
 
     (set! vbox (ui:new-vertical-box))
-    (ui:box-padded?-set! vbox #t)
     (ui:group-child-set! group (ui:->control vbox))
 
     (set! combobox (ui:new-combobox))
@@ -149,10 +143,8 @@
         (message-grid #f))
 
     (set! hbox (ui:new-horizontal-box))
-    (ui:box-padded?-set! hbox #t)
 
     (set! vbox (ui:new-vertical-box))
-    (ui:box-padded?-set! vbox #t)
     (ui:box-append! hbox (ui:->control vbox))
 
     (ui:box-append! vbox (ui:->control (ui:new-date-picker)))
@@ -165,11 +157,9 @@
     (ui:box-append! hbox (ui:->control (ui:new-vertical-separator)))
 
     (set! vbox (ui:new-vertical-box))
-    (ui:box-padded?-set! vbox #t)
     (ui:box-append! hbox (ui:->control vbox) #t)
 
     (set! grid (ui:new-grid))
-    (ui:grid-padded?-set! grid #t)
     (ui:box-append! vbox (ui:->control grid))
 
     (set! button (ui:new-button "Open File"))
@@ -187,7 +177,6 @@
     (ui:grid-append! grid (ui:->control entry) 1 1 1 1 #t 'fill #f 'fill)
 
     (set! message-grid (ui:new-grid))
-    (ui:grid-padded?-set! message-grid #t)
     (ui:grid-append! grid (ui:->control message-grid) 0 2 2 1 #f 'center #f 'start)
 
     (set! button (ui:new-button "Message Box"))
@@ -207,19 +196,15 @@
 
 (define tab (ui:new-tab))
 (ui:window-child-set! main-window (ui:->control tab))
-(ui:window-margined?-set! main-window #t)
 
 (define basic-controls-page (make-basic-controls-page))
 (ui:tab-append! tab "Basic Controls" basic-controls-page)
-(ui:tab-margined?-set! tab 0 #t)
 
 (define numbers-page (make-numbers-page))
 (ui:tab-append! tab "Numbers and Lists" numbers-page)
-(ui:tab-margined?-set! tab 1 #t)
 
 (define data-choosers-page (make-data-choosers-page))
 (ui:tab-append! tab "Data Choosers" data-choosers-page)
-(ui:tab-margined?-set! tab 2 #t)
 
 (ui:control-show! (ui:->control main-window))
 (ui:main)

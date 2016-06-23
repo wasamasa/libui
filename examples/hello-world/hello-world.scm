@@ -1,5 +1,8 @@
 (use (prefix libui ui:))
 
+(ui:margined? #t)
+(ui:padded? #t)
+
 (ui:init!)
 
 (define window (ui:new-window "Hello World" 180 60 #t))
@@ -15,11 +18,9 @@
 (ui:handler-set! quit-button 'clicked (lambda (_button) (ui:quit!)))
 
 (define hbox (ui:new-horizontal-box))
-(ui:box-padded?-set! hbox #t)
 (ui:box-append! hbox (ui:->control greet-button) #t)
 (ui:box-append! hbox (ui:->control quit-button) #t)
 
 (ui:window-child-set! window (ui:->control hbox))
-(ui:window-margined?-set! window #t)
 (ui:control-show! (ui:->control window))
 (ui:main)
