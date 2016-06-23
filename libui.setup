@@ -1,7 +1,11 @@
 (compile -s -O3 -d1 "libui.scm" -J -lui)
 (compile -s "libui.import.scm")
 
+(compile -s -O3 -d1 "libui-draw.scm" -J -lui)
+(compile -s "libui-draw.import.scm")
+
 (install-extension
  'libui
- '("libui.so" "libui.import.so")
+ '("libui.so" "libui.import.so"
+   "libui-draw.so" "libui-draw.import.so")
  '((version "0.0.1")))

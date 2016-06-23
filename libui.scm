@@ -1,5 +1,5 @@
 (module libui
-  (init! main quit!
+  (init! uninit! main quit!
    handler-set!
    new-window window-child-set! window-margined?-set!
    new-button
@@ -18,15 +18,20 @@
    new-radio-buttons radio-buttons-append!
    new-date-time-picker new-date-picker new-time-picker
    new-multiline-entry new-non-wrapping-multiline-entry
+   new-area area-queue-redraw-all!
+   new-area-handler
+   area-mouse-event-x area-mouse-event-y area-mouse-event-area-width area-mouse-event-area-height
+   area-draw-params-context area-draw-params-area-width area-draw-params-area-height
    new-font-button
-   new-color-button
+   new-color-button color-button-color color-button-color-set!
    new-form form-append! form-padded?-set!
    new-grid grid-append! grid-padded?-set!
    ->control control-destroy! control-show!
    open-file save-file message-box message-box-error)
 
 (import chicken scheme foreign)
-(use srfi-69 matchable)
+(use srfi-69 matchable lolevel
+     libui-draw)
 
 ;;; headers
 
@@ -53,6 +58,7 @@
      (abort (usage-error "Invalid alignment" 'alignment->int)))))
 
 ;;; typedefs
+
 ;; NOTE: uiInitOptions doesn't appear to be used in any way...
 ;; (define-foreign-type uiInitOptions*-or-null (c-pointer (struct "uiInitOptions")))
 (define-foreign-type uiControl* (nonnull-c-pointer (struct "uiControl")))
@@ -73,13 +79,22 @@
 (define-foreign-type uiRadioButtons* (nonnull-c-pointer (struct "uiRadioButtons")))
 (define-foreign-type uiDateTimePicker* (nonnull-c-pointer (struct "uiDateTimePicker")))
 (define-foreign-type uiMultilineEntry* (nonnull-c-pointer (struct "uiMultilineEntry")))
+(define-foreign-type uiArea* (nonnull-c-pointer (struct "uiArea")))
+(define-foreign-type uiAreaHandler* (nonnull-c-pointer (struct "uiAreaHandler")))
+(define-foreign-type uiAreaDrawParams* (nonnull-c-pointer (struct "uiAreaDrawParams")))
+(define-foreign-type uiAreaMouseEvent* (nonnull-c-pointer (struct "uiAreaMouseEvent")))
+(define-foreign-type uiAreaKeyEvent* (nonnull-c-pointer (struct "uiAreaKeyEvent")))
+(define-foreign-type uiDrawContext* (nonnull-c-pointer (struct "uiDrawContext")))
 (define-foreign-type uiFontButton* (nonnull-c-pointer (struct "uiFontButton")))
 (define-foreign-type uiColorButton* (nonnull-c-pointer (struct "uiColorButton")))
 (define-foreign-type uiForm* (nonnull-c-pointer (struct "uiForm")))
 (define-foreign-type uiGrid* (nonnull-c-pointer (struct "uiGrid")))
+
 (define-foreign-type uiEnum unsigned-int)
+(define-foreign-type double* (nonnull-c-pointer double))
 
 ;;; auxiliary records
+
 (define-record control pointer)
 (define-record window pointer handlers)
 (define-record button pointer handlers)
@@ -97,13 +112,60 @@
 (define-record radio-buttons pointer handlers)
 (define-record date-time-picker pointer)
 (define-record multiline-entry pointer handlers)
+(define-record context pointer)
+(define-record area pointer)
+(define-record area-draw-params pointer)
+(define-record area-mouse-event pointer)
+(define-record area-key-event pointer)
 (define-record font-button pointer handlers)
 (define-record color-button pointer handlers)
 (define-record form pointer)
 (define-record grid pointer)
 (define-record box pointer)
 
+;;; struct helpers
+
+;; area handler
+
+(define-record area-handler pointer draw mouse-event mouse-crossed drag-broken key-event)
+
+(define uiAreaHandler-size (foreign-type-size (struct "uiAreaHandler")))
+
+;; area mouse event
+
+(define (area-mouse-event-x mouse-event)
+  (let ((mouse-event* (area-mouse-event-pointer mouse-event)))
+    ((foreign-lambda* double ((uiAreaMouseEvent* e)) "C_return(e->X);") mouse-event*)))
+
+(define (area-mouse-event-y mouse-event)
+  (let ((mouse-event* (area-mouse-event-pointer mouse-event)))
+    ((foreign-lambda* double ((uiAreaMouseEvent* e)) "C_return(e->Y);") mouse-event*)))
+
+(define (area-mouse-event-area-width mouse-event)
+  (let ((mouse-event* (area-mouse-event-pointer mouse-event)))
+    ((foreign-lambda* double ((uiAreaMouseEvent* e)) "C_return(e->AreaWidth);") mouse-event*)))
+
+(define (area-mouse-event-area-height mouse-event)
+  (let ((mouse-event* (area-mouse-event-pointer mouse-event)))
+    ((foreign-lambda* double ((uiAreaMouseEvent* e)) "C_return(e->AreaHeight);") mouse-event*)))
+
+;; area draw params
+
+(define (area-draw-params-context draw-params)
+  (let* ((draw-params* (area-draw-params-pointer draw-params))
+         (context* ((foreign-lambda* uiDrawContext* ((uiAreaDrawParams* params)) "C_return(params->Context);") draw-params*)))
+    (make-context context*)))
+
+(define (area-draw-params-area-width draw-params)
+  (let ((draw-params* (area-draw-params-pointer draw-params)))
+    ((foreign-lambda* double ((uiAreaDrawParams* params)) "C_return(params->AreaWidth);") draw-params*)))
+
+(define (area-draw-params-area-height draw-params)
+  (let ((draw-params* (area-draw-params-pointer draw-params)))
+    ((foreign-lambda* double ((uiAreaDrawParams* params)) "C_return(params->AreaHeight);") draw-params*)))
+
 ;;; foreign functions
+
 (define uiInit (foreign-lambda* c-string* ()
                  "uiInitOptions options;"
                  "const char *msg = uiInit(&options);"
@@ -113,6 +175,7 @@
                  "  C_return(ret);"
                  "}"
                  "C_return(NULL);"))
+(define uiUninit (foreign-lambda void "uiUninit"))
 (define uiMain (foreign-safe-lambda void "uiMain"))
 (define uiQuit (foreign-lambda void "uiQuit"))
 
@@ -186,9 +249,15 @@
 (define uiNewMultilineEntry (foreign-lambda uiMultilineEntry* "uiNewMultilineEntry"))
 (define uiNewNonWrappingMultilineEntry (foreign-lambda uiMultilineEntry* "uiNewNonWrappingMultilineEntry"))
 
+(define uiNewArea (foreign-lambda uiArea* "uiNewArea" uiAreaHandler*))
+(define uiAreaQueueRedrawAll (foreign-lambda void "uiAreaQueueRedrawAll" uiArea*))
+
 (define uiNewFontButton (foreign-lambda uiFontButton* "uiNewFontButton"))
 
 (define uiNewColorButton (foreign-lambda uiColorButton* "uiNewColorButton"))
+(define uiColorButtonOnChanged (foreign-lambda void "uiColorButtonOnChanged" uiColorButton* (function void (uiColorButton* c-pointer)) c-pointer))
+(define uiColorButtonColor (foreign-lambda void "uiColorButtonColor" uiColorButton* double* double* double* double*))
+(define uiColorButtonSetColor (foreign-lambda void "uiColorButtonSetColor" uiColorButton* double double double double))
 
 (define uiNewForm (foreign-lambda uiForm* "uiNewForm"))
 (define uiFormAppend (foreign-lambda void "uiFormAppend" uiForm* nonnull-c-string uiControl* bool))
@@ -260,6 +329,9 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
 (define-external (libui_SliderChangedHandler (uiSlider* slider*) (c-pointer _data)) void
   (dispatch-event! slider* slider-handlers 'changed))
 
+(define-external (libui_ColorButtonChangedHandler (uiColorButton* color-button*) (c-pointer _data)) void
+  (dispatch-event! color-button* color-button-handlers 'changed))
+
 ;; generic interface
 
 (define (handler-set! widget type proc #!rest args)
@@ -280,9 +352,64 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
    ((and (slider? widget) (eqv? type 'changed))
     (hash-table-set! (slider-handlers widget) 'changed (cons proc args))
     (uiSliderOnChanged (slider-pointer widget) (location libui_SliderChangedHandler) #f))
+   ((and (color-button? widget) (eqv? type 'changed))
+    (hash-table-set! (color-button-handlers widget) 'changed (cons proc args))
+    (uiColorButtonOnChanged (color-button-pointer widget) (location libui_ColorButtonChangedHandler) #f))
 
    (else
     (abort (usage-error "Unsupported widget/type combination" 'handler-set!)))))
+
+;; area handler
+
+;; NOTE: this wouldn't work with locatives to blobs as they can change...
+(define area-table (make-hash-table))
+
+(define-external (libui_AreaDrawHandler (uiAreaHandler* area-handler*) (uiArea* area*) (uiAreaDrawParams* draw-params*)) void
+  (let* ((area-handler (hash-table-ref area-table area-handler*))
+         (proc (area-handler-draw area-handler))
+         (area (make-area area*))
+         (draw-params (make-area-draw-params draw-params*)))
+    (proc area-handler area draw-params)))
+
+(define-external (libui_AreaMouseEventHandler (uiAreaHandler* area-handler*) (uiArea* area*) (uiAreaMouseEvent* mouse-event*)) void
+  (let* ((area-handler (hash-table-ref area-table area-handler*))
+         (proc (area-handler-mouse-event area-handler))
+         (area (make-area area*))
+         (mouse-event (make-area-mouse-event mouse-event*)))
+    (proc area-handler area mouse-event)))
+
+(define-external (libui_AreaMouseCrossedHandler (uiAreaHandler* area-handler*) (uiArea* area*) (bool left?)) void
+  (let* ((area-handler (hash-table-ref area-table area-handler*))
+         (proc (area-handler-mouse-crossed area-handler))
+         (area (make-area area*)))
+    (proc area-handler area left?)))
+
+(define-external (libui_AreaDragBrokenHandler (uiAreaHandler* area-handler*) (uiArea* area*)) void
+  (let* ((area-handler (hash-table-ref area-table area-handler*))
+         (proc (area-handler-drag-broken area-handler))
+         (area (make-area area*)))
+    (proc area-handler area)))
+
+(define-external (libui_AreaKeyEventHandler (uiAreaHandler* area-handler*) (uiArea* area*) (uiAreaKeyEvent* key-event*)) bool
+  (let* ((area-handler (hash-table-ref area-table area-handler*))
+         (proc (area-handler-key-event area-handler))
+         (area (make-area area*))
+         (key-event (make-area-key-event key-event*)))
+    (proc area-handler area key-event)))
+
+(define (new-area-handler draw-handler mouse-event-handler mouse-crossed-handler drag-broken-handler key-event-handler)
+  (let* ((area-handler* (allocate uiAreaHandler-size))
+         (_ ((foreign-lambda* void ((uiAreaHandler* handler))
+               "uiAreaHandler *h = handler;"
+               "h->Draw = libui_AreaDrawHandler;"
+               "h->MouseEvent = libui_AreaMouseEventHandler;"
+               "h->MouseCrossed = libui_AreaMouseCrossedHandler;"
+               "h->DragBroken = libui_AreaDragBrokenHandler;"
+               "h->KeyEvent = libui_AreaKeyEventHandler;")
+             area-handler*))
+         (area-handler (make-area-handler area-handler* draw-handler mouse-event-handler mouse-crossed-handler drag-broken-handler key-event-handler)))
+    (hash-table-set! area-table area-handler* area-handler)
+    (set-finalizer! area-handler free)))
 
 ;;; API
 
@@ -292,6 +419,8 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
   (let ((ret (uiInit)))
     (when ret
       (abort (libui-error ret 'init!)))))
+
+(define uninit! uiUninit)
 
 (define main uiMain)
 
@@ -447,11 +576,32 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
 (define (new-non-wrapping-multiline-entry)
   (define-widget uiNewNonWrappingMultilineEntry make-multiline-entry))
 
+(define (new-area area-handler)
+  (let ((area-handler* (area-handler-pointer area-handler)))
+    (define-widget* uiNewArea make-area area-handler*)))
+
+(define (area-queue-redraw-all! area)
+  (let ((area* (area-pointer area)))
+    (uiAreaQueueRedrawAll area*)))
+
 (define (new-font-button)
   (define-widget uiNewFontButton make-font-button))
 
 (define (new-color-button)
   (define-widget uiNewColorButton make-color-button))
+
+(define (color-button-color color-button)
+  (let ((color-button* (color-button-pointer color-button)))
+    (let-location ((r double)
+                   (g double)
+                   (b double)
+                   (a double))
+      (uiColorButtonColor color-button* (location r) (location g) (location b) (location a))
+      (list r g b a))))
+
+(define (color-button-color-set! color-button r g b a)
+  (let ((color-button* (color-button-pointer color-button)))
+    (uiColorButtonSetColor color-button* r g b a)))
 
 (define (new-form)
   (define-widget* uiNewForm make-form))
@@ -534,6 +684,8 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
     (make-control (uiControl (date-time-picker-pointer arg))))
    ((multiline-entry? arg)
     (make-control (uiControl (multiline-entry-pointer arg))))
+   ((area? arg)
+    (make-control (uiControl (area-pointer arg))))
    ((font-button? arg)
     (make-control (uiControl (font-button-pointer arg))))
    ((color-button? arg)
