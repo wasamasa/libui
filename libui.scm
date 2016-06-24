@@ -422,7 +422,10 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
     (when ret
       (abort (libui-error ret 'init!)))))
 
-(define uninit! uiUninit)
+(define (uninit!)
+  ;; run all pending finalizers
+  (gc #t)
+  (uiUninit))
 
 (define main uiMain)
 

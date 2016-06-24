@@ -77,7 +77,6 @@
     (draw:path-add-rectangle! path 0 0 area-width area-height)
     (draw:path-end! path)
     (draw:fill! context path brush)
-    (draw:path-free! path)
 
     (set!-values (graph-width graph-height) (graph-size area-width area-height))
 
@@ -88,7 +87,6 @@
     (draw:path-line-to! path (+ x-off-left graph-width) (+ y-off-top graph-height))
     (draw:path-end! path)
     (draw:stroke! context path brush stroke-params)
-    (draw:path-free! path)
 
     (draw:matrix-identity-set! matrix)
     (draw:matrix-translate! matrix x-off-left y-off-top)
@@ -99,12 +97,10 @@
     (set! path (construct-graph graph-width graph-height #t))
     (draw:brush-a-set! brush (/ (last color) 2))
     (draw:fill! context path brush)
-    (draw:path-free! path)
 
     (set! path (construct-graph graph-width graph-height #f))
     (draw:brush-a-set! brush (last color))
     (draw:stroke! context path brush stroke-params)
-    (draw:path-free! path)
 
     (when current-point
       (let-values (((xs ys) (point-locations graph-width graph-height)))
@@ -115,8 +111,7 @@
                                            point-radius
                                            0 (* 2 pi))
         (draw:path-end! path)
-        (draw:fill! context path brush)
-        (draw:path-free! path)))))
+        (draw:fill! context path brush)))))
 
 (define (in-point? x y xtest ytest)
   (let ((x (- x x-off-left))
