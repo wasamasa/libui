@@ -19,7 +19,7 @@
    new-editable-combobox editable-combobox-append!
    new-radio-buttons radio-buttons-append!
    new-date-time-picker new-date-picker new-time-picker
-   new-multiline-entry new-non-wrapping-multiline-entry
+   new-multiline-entry new-non-wrapping-multiline-entry multiline-entry-append! multiline-entry-read-only?-set!
    new-area area-queue-redraw-all!
    new-area-handler
    area-mouse-event-x area-mouse-event-y area-mouse-event-area-width area-mouse-event-area-height
@@ -236,6 +236,8 @@
 
 (define uiNewMultilineEntry (foreign-lambda uiMultilineEntry* "uiNewMultilineEntry"))
 (define uiNewNonWrappingMultilineEntry (foreign-lambda uiMultilineEntry* "uiNewNonWrappingMultilineEntry"))
+(define uiMultilineEntryAppend (foreign-lambda void "uiMultilineEntryAppend" uiMultilineEntry* nonnull-c-string))
+(define uiMultilineEntrySetReadOnly (foreign-lambda void "uiMultilineEntrySetReadOnly" uiMultilineEntry* bool))
 
 (define uiNewArea (foreign-lambda uiArea* "uiNewArea" uiAreaHandler*))
 (define uiAreaQueueRedrawAll (foreign-lambda void "uiAreaQueueRedrawAll" uiArea*))
@@ -576,6 +578,14 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
 (define (new-non-wrapping-multiline-entry)
   (define-widget 'non-wrapping-multiline-entry uiNewNonWrappingMultilineEntry))
 
+(define (multiline-entry-append! multiline-entry text)
+  (let ((multiline-entry* (widget-pointer multiline-entry)))
+    (uiMultilineEntryAppend multiline-entry* text)))
+
+(define (multiline-entry-read-only?-set! multiline-entry read-only?)
+  (let ((multiline-entry* (widget-pointer multiline-entry)))
+    (uiMultilineEntrySetReadOnly multiline-entry* read-only?)))
+
 (define (new-area area-handler)
   (let ((area-handler* (area-handler-pointer area-handler)))
     (define-widget 'area uiNewArea area-handler*)))
@@ -726,6 +736,7 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
            (padded?-pair (assv 'padded? attributes))
            (text (attribute-ref 'text attributes))
            (value (attribute-ref 'value attributes))
+           (read-only? (attribute-ref 'read-only? attributes))
            (min (attribute-ref 'min attributes))
            (max (attribute-ref 'max attributes))
            (handler-pair (find-handler-pair attributes))
@@ -754,15 +765,21 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
               ((checkbox)
                (new-checkbox text))
               ((entry password-entry search-entry)
-               (let ((read-only? (attribute-ref 'read-only? attributes))
-                     (entry ((case tag
-                                    ((entry) new-entry)
-                                    ((password-entry) new-password-entry)
-                                    ((search-entry) new-search-entry)))))
+               (let ((entry ((case tag
+                               ((entry) new-entry)
+                               ((password-entry) new-password-entry)
+                               ((search-entry) new-search-entry)))))
                  (when text
                    (entry-text-set! entry text))
                  (when read-only?
                    (entry-read-only?-set! entry read-only?))
+                 entry))
+              ((multiline-entry non-wrapping-multiline-entry)
+               (let ((entry ((case tag
+                               ((multiline-entry) new-multiline-entry)
+                               ((non-wrapping-multiline-entry) new-non-wrapping-multiline-entry)))))
+                 (when read-only?
+                   (multiline-entry-read-only?-set! entry read-only?))
                  entry))
               ((multiline-entry)
                (new-multiline-entry))
