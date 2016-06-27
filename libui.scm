@@ -29,7 +29,8 @@
    new-form form-append! form-padded?-set!
    new-grid grid-append! grid-padded?-set!
    ->control control-destroy! control-show!
-   open-file save-file message-box message-box-error)
+   open-file save-file message-box message-box-error
+   widget-by-id widgets)
 
 (import chicken scheme foreign)
 (use srfi-69 matchable lolevel srfi-1
@@ -685,5 +686,221 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
 (define (message-box-error parent title description)
   (let ((parent* (widget-pointer parent)))
     (uiMsgBoxError parent* title description)))
+
+;; SXML interface
+
+(define (widget-by-id id)
+  (find
+   (lambda (widget)
+     (eqv? (widget-id widget) id))
+  (hash-table-values widget-table)))
+
+(define (widgets sxml)
+  (define (attribute-ref attribute attributes)
+    (let ((value (assv attribute attributes)))
+      (and value (cadr value))))
+
+  (define sxml-attributes
+    (match-lambda
+     ((tag ('@ attributes ...) children ...)
+      attributes)
+     ((tag children ...)
+      '())))
+
+  (define sxml-children
+    (match-lambda
+     ((tag ('@ attributes ...) children ...)
+      children)
+     ((tag children ...)
+      children)))
+
+  (define (find-handler-pair attributes)
+    (find
+     (lambda (pair)
+       (memv (car pair) '(should-quit closing clicked changed)))
+     attributes))
+
+  (define (widget tag attributes children)
+    (let* ((id (attribute-ref 'id attributes))
+           (margined?-pair (assv 'margined? attributes))
+           (padded?-pair (assv 'padded? attributes))
+           (text (attribute-ref 'text attributes))
+           (value (attribute-ref 'value attributes))
+           (min (attribute-ref 'min attributes))
+           (max (attribute-ref 'max attributes))
+           (handler-pair (find-handler-pair attributes))
+           (widget
+            (case tag
+              ((window)
+               (let* ((title (attribute-ref 'title attributes))
+                      (width (attribute-ref 'width attributes))
+                      (height (attribute-ref 'height attributes))
+                      (menubar? (attribute-ref 'menubar? attributes))
+                      (window (new-window title width height menubar?)))
+                 (when margined?-pair
+                   (window-margined?-set! window (cadr margined?-pair)))
+                 (window-child-set! window (->control (widgets (car children))))
+                 window))
+              ((button)
+               (new-button text))
+              ((font-button)
+               (new-font-button))
+              ((color-button)
+               (let ((color (attribute-ref 'color attributes))
+                     (color-button (new-color-button)))
+                 (when color
+                   (apply color-button-color-set! color))
+                 color-button))
+              ((checkbox)
+               (new-checkbox text))
+              ((entry password-entry search-entry)
+               (let ((read-only? (attribute-ref 'read-only? attributes))
+                     (entry ((case tag
+                                    ((entry) new-entry)
+                                    ((password-entry) new-password-entry)
+                                    ((search-entry) new-search-entry)))))
+                 (when text
+                   (entry-text-set! entry text))
+                 (when read-only?
+                   (entry-read-only?-set! entry read-only?))
+                 entry))
+              ((multiline-entry)
+               (new-multiline-entry))
+              ((non-wrapping-multiline-entry)
+               (new-non-wrapping-multiline-entry))
+              ((label)
+               (new-label text))
+              ((spinbox)
+               (let ((spinbox (new-spinbox min max)))
+                 (when value
+                   (spinbox-value-set! spinbox value))
+                 spinbox))
+              ((slider)
+               (let ((slider (new-slider min max)))
+                 (when value
+                   (slider-value-set! slider value))
+                 slider))
+              ((progress-bar)
+               (let ((progress-bar (new-progress-bar)))
+                 (when value
+                   (progress-bar-value-set! progress-bar value))
+                 progress-bar))
+              ((horizontal-separator)
+               (new-horizontal-separator))
+              ((vertical-separator)
+               (new-vertical-separator))
+              ((combobox editable-combobox radio-buttons)
+               (let ((constructor (case tag
+                                    ((combobox) new-combobox)
+                                    ((editable-combobox) new-editable-combobox)
+                                    ((radio-buttons) new-radio-buttons)))
+                     (appender (case tag
+                                 ((combobox) combobox-append!)
+                                 ((editable-combobox) editable-combobox-append!)
+                                 ((radio-buttons) radio-buttons-append!))))
+                 (let ((widget (constructor)))
+                   (for-each
+                    (lambda (child)
+                      (appender widget child))
+                    children)
+                   widget)))
+              ((date-picker)
+               (new-date-picker))
+              ((time-picker)
+               (new-time-picker))
+              ((date-time-picker)
+               (new-date-time-picker))
+              ((area)
+               (let ((handler (attribute-ref 'handler attributes)))
+                 (new-area handler)))
+
+              ((hbox vbox)
+               (let* ((horizontal? (if (eqv? tag 'hbox) #t #f))
+                      (box (if horizontal? (new-horizontal-box) (new-vertical-box))))
+                 (for-each
+                  (lambda (child)
+                    (let* ((attributes (sxml-attributes child))
+                           (stretchy? (attribute-ref 'stretchy? attributes)))
+                      (box-append! box (->control (widgets child)) stretchy?)))
+                  children)
+                 (when padded?-pair
+                   (box-padded?-set! box (cadr padded?-pair)))
+                 box))
+
+              ((tab)
+               (let ((tab (new-tab)))
+                 (for-each
+                  (lambda (child index)
+                    (let* ((attributes (sxml-attributes child))
+                           (text (attribute-ref 'text attributes))
+                           (margined?-pair (assv 'margined? attributes))
+                           (children (sxml-children child))
+                           (item (car children)))
+                      (tab-append! tab text (->control (widgets item)))
+                      (when margined?-pair
+                        (tab-margined?-set! tab index (cadr margined?-pair)))))
+                  children (iota (length children)))
+                 tab))
+              ((group)
+               (let ((group (new-group text))
+                     (child (car children)))
+                 (group-child-set! group (->control (widgets child)))
+                 (when margined?-pair
+                   (group-margined?-set! group (cadr margined?-pair)))
+                 group))
+
+              ((form)
+               (let ((form (new-form))
+                     (padded?-pair (assv 'padded? attributes)))
+                 (for-each
+                  (lambda (child)
+                    (let* ((attributes (sxml-attributes child))
+                           (stretchy? (attribute-ref 'stretchy? attributes))
+                           (text (attribute-ref 'text attributes))
+                           (children (sxml-children child))
+                           (item (car children)))
+                      (form-append! form text (->control (widgets item)) stretchy?)))
+                  children)
+                 (when padded?-pair
+                   (form-padded?-set! form (cadr padded?-pair)))
+                 form))
+              ((grid)
+               (let ((grid (new-grid))
+                     (padded?-pair (assv 'padded? attributes)))
+                 (for-each
+                  (lambda (child)
+                    (let* ((attributes (sxml-attributes child))
+                           (left (attribute-ref 'left attributes))
+                           (top (attribute-ref 'top attributes))
+                           (xspan (or (attribute-ref 'xspan attributes) 1))
+                           (yspan (or (attribute-ref 'yspan attributes) 1))
+                           (hexpand (attribute-ref 'hexpand attributes))
+                           (halign (or (attribute-ref 'halign attributes) 'fill))
+                           (vexpand (attribute-ref 'vexpand attributes))
+                           (valign (or (attribute-ref 'valign attributes) 'fill))
+                           (children (sxml-children child))
+                           (item (car children)))
+                      (grid-append! grid (->control (widgets item)) left top
+                                    xspan yspan hexpand halign vexpand valign)))
+                  children)
+                 (when padded?-pair
+                   (grid-padded?-set! grid (cadr padded?-pair)))
+                 grid))
+
+              (else
+               (abort (usage-error (format "Unimplemented widget tag name: ~a" tag)
+                                   'widgets))))))
+        (when id
+          (widget-id-set! widget id))
+        (when handler-pair
+          (handler-set! widget (car handler-pair) (cadr handler-pair)))
+        widget))
+
+  (match sxml
+    ((tag ('@ attributes ...) children ...)
+     (widget tag attributes children))
+    ((tag children ...)
+     (widget tag '() children))
+    (_ (abort (usage-error "Invalid SXML syntax" 'widgets)))))
 
 )

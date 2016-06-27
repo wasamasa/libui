@@ -5,22 +5,29 @@
 
 (ui:init!)
 
-(define window (ui:new-window "Hello World" 180 60 #t))
-(ui:handler-set! window 'closing (lambda (_window) (ui:quit!)))
+(define window #f)
 
 (define (greet _button)
   (ui:message-box window "Greeting" "Hello World!"))
 
-(define greet-button (ui:new-button "Click Me!"))
-(ui:handler-set! greet-button 'clicked greet)
+(ui:widgets
+ `(window
+   (@ (id main)
+      (title "Hello World")
+      (width 180)
+      (height 60)
+      (menubar? #t)
+      (closing ,(lambda (_window) (ui:quit!))))
+   (hbox
+    (button
+     (@ (stretchy? #t)
+        (text "Click Me!")
+        (clicked ,greet)))
+    (button
+     (@ (stretchy? #t)
+        (text "Quit")
+        (clicked ,(lambda (_button) (ui:quit!))))))))
 
-(define quit-button (ui:new-button "Quit"))
-(ui:handler-set! quit-button 'clicked (lambda (_button) (ui:quit!)))
-
-(define hbox (ui:new-horizontal-box))
-(ui:box-append! hbox (ui:->control greet-button) #t)
-(ui:box-append! hbox (ui:->control quit-button) #t)
-
-(ui:window-child-set! window (ui:->control hbox))
+(set! window (ui:widget-by-id 'main))
 (ui:control-show! (ui:->control window))
 (ui:main)
