@@ -638,12 +638,13 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
     (grid-padded?-set! grid (padded?))
     grid))
 
-(define (grid-append! grid control left top xspan yspan hexpand halign vexpand valign)
+(define (grid-append! grid control left top #!optional xspan yspan hexpand halign vexpand valign)
   (let ((grid* (widget-pointer grid))
         (control* (control-pointer control))
-        (halign (alignment->int halign))
-        (valign (alignment->int valign)))
-    (uiGridAppend grid* control* left top xspan yspan hexpand halign vexpand valign)))
+        (halign (alignment->int (or halign 'fill)))
+        (valign (alignment->int (or valign 'fill))))
+    (uiGridAppend grid* control* left top (or xspan 1) (or yspan 1)
+                  hexpand halign vexpand valign)))
 
 (define (grid-padded?-set! grid padded?)
   (let ((grid* (widget-pointer grid)))
