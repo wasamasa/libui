@@ -672,10 +672,10 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
 
 ;;  controls
 
-(define (->control arg)
-  (when (not (widget? arg))
+(define (->control widget)
+  (when (not (widget? widget))
     (abort (usage-error "Argument must be a widget" '->control)))
-  (make-control (uiControl (widget-pointer arg))))
+  (make-control (uiControl (widget-pointer widget))))
 
 (define (control-destroy! control)
   (let ((control* (control-pointer control)))
