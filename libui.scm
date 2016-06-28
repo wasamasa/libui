@@ -22,8 +22,8 @@
    new-multiline-entry new-non-wrapping-multiline-entry multiline-entry-append! multiline-entry-read-only?-set!
    new-area area-queue-redraw-all!
    new-area-handler
-   area-mouse-event-x area-mouse-event-y area-mouse-event-area-width area-mouse-event-area-height
-   area-draw-params-context area-draw-params-area-width area-draw-params-area-height
+   mouse-event-x mouse-event-y mouse-event-area-width mouse-event-area-height
+   draw-params-context draw-params-area-width draw-params-area-height
    new-font-button
    new-color-button color-button-color color-button-color-set!
    new-form form-append! form-padded?-set!
@@ -106,9 +106,9 @@
 
 (define-record context pointer)
 
-(define-record area-draw-params pointer)
-(define-record area-mouse-event pointer)
-(define-record area-key-event pointer)
+(define-record draw-params pointer)
+(define-record mouse-event pointer)
+(define-record key-event pointer)
 
 ;;; struct helpers
 
@@ -118,37 +118,35 @@
 
 (define uiAreaHandler-size (foreign-type-size (struct "uiAreaHandler")))
 
-;; area mouse event
+;; area mouse events and draw params
 
-(define (area-mouse-event-x mouse-event)
-  (let ((mouse-event* (area-mouse-event-pointer mouse-event)))
+(define (mouse-event-x mouse-event)
+  (let ((mouse-event* (mouse-event-pointer mouse-event)))
     ((foreign-lambda* double ((uiAreaMouseEvent* e)) "C_return(e->X);") mouse-event*)))
 
-(define (area-mouse-event-y mouse-event)
-  (let ((mouse-event* (area-mouse-event-pointer mouse-event)))
+(define (mouse-event-y mouse-event)
+  (let ((mouse-event* (mouse-event-pointer mouse-event)))
     ((foreign-lambda* double ((uiAreaMouseEvent* e)) "C_return(e->Y);") mouse-event*)))
 
-(define (area-mouse-event-area-width mouse-event)
-  (let ((mouse-event* (area-mouse-event-pointer mouse-event)))
+(define (mouse-event-area-width mouse-event)
+  (let ((mouse-event* (mouse-event-pointer mouse-event)))
     ((foreign-lambda* double ((uiAreaMouseEvent* e)) "C_return(e->AreaWidth);") mouse-event*)))
 
-(define (area-mouse-event-area-height mouse-event)
-  (let ((mouse-event* (area-mouse-event-pointer mouse-event)))
+(define (mouse-event-area-height mouse-event)
+  (let ((mouse-event* (mouse-event-pointer mouse-event)))
     ((foreign-lambda* double ((uiAreaMouseEvent* e)) "C_return(e->AreaHeight);") mouse-event*)))
 
-;; area draw params
-
-(define (area-draw-params-context draw-params)
-  (let* ((draw-params* (area-draw-params-pointer draw-params))
+(define (draw-params-context draw-params)
+  (let* ((draw-params* (draw-params-pointer draw-params))
          (context* ((foreign-lambda* uiDrawContext* ((uiAreaDrawParams* params)) "C_return(params->Context);") draw-params*)))
     (make-context context*)))
 
-(define (area-draw-params-area-width draw-params)
-  (let ((draw-params* (area-draw-params-pointer draw-params)))
+(define (draw-params-area-width draw-params)
+  (let ((draw-params* (draw-params-pointer draw-params)))
     ((foreign-lambda* double ((uiAreaDrawParams* params)) "C_return(params->AreaWidth);") draw-params*)))
 
-(define (area-draw-params-area-height draw-params)
-  (let ((draw-params* (area-draw-params-pointer draw-params)))
+(define (draw-params-area-height draw-params)
+  (let ((draw-params* (draw-params-pointer draw-params)))
     ((foreign-lambda* double ((uiAreaDrawParams* params)) "C_return(params->AreaHeight);") draw-params*)))
 
 ;;; foreign functions
@@ -372,11 +370,11 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
 
 (define-external (libui_AreaDrawHandler (uiAreaHandler* area-handler*) (uiArea* area*) (uiAreaDrawParams* draw-params*)) void
   (dispatch-area-event! area-handler* area* area-handler-draw
-                        (make-area-draw-params draw-params*)))
+                        (make-draw-params draw-params*)))
 
 (define-external (libui_AreaMouseEventHandler (uiAreaHandler* area-handler*) (uiArea* area*) (uiAreaMouseEvent* mouse-event*)) void
   (dispatch-area-event! area-handler* area* area-handler-mouse-event
-                        (make-area-mouse-event mouse-event*)))
+                        (make-mouse-event mouse-event*)))
 
 (define-external (libui_AreaMouseCrossedHandler (uiAreaHandler* area-handler*) (uiArea* area*) (bool left?)) void
   (dispatch-area-event! area-handler* area* area-handler-mouse-crossed left?))
@@ -386,7 +384,7 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
 
 (define-external (libui_AreaKeyEventHandler (uiAreaHandler* area-handler*) (uiArea* area*) (uiAreaKeyEvent* key-event*)) bool
   (dispatch-area-event! area-handler* area* area-handler-key-event
-                        (make-area-key-event key-event*)))
+                        (make-key-event key-event*)))
 
 (define (new-area-handler draw-handler mouse-event-handler mouse-crossed-handler drag-broken-handler key-event-handler)
   (let* ((area-handler* (allocate uiAreaHandler-size))
