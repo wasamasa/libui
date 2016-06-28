@@ -788,10 +788,6 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
                  (when read-only?
                    (multiline-entry-read-only?-set! entry read-only?))
                  entry))
-              ((multiline-entry)
-               (new-multiline-entry))
-              ((non-wrapping-multiline-entry)
-               (new-non-wrapping-multiline-entry))
               ((label)
                (new-label text))
               ((spinbox)
