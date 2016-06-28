@@ -88,6 +88,8 @@
   (let ((brush* (brush-pointer brush)))
     ((foreign-lambda* void ((uiDrawBrush* br) (double r)) "br->R = r;") brush* r)))
 
+(define brush-r (getter-with-setter brush-r brush-r-set!))
+
 (define (brush-g brush)
   (let ((brush* (brush-pointer brush)))
     ((foreign-lambda* double ((uiDrawBrush* br)) "C_return(br->G);") brush*)))
@@ -95,6 +97,8 @@
 (define (brush-g-set! brush g)
   (let ((brush* (brush-pointer brush)))
     ((foreign-lambda* void ((uiDrawBrush* br) (double g)) "br->G = g;") brush* g)))
+
+(define brush-g (getter-with-setter brush-g brush-g-set!))
 
 (define (brush-b brush)
   (let ((brush* (brush-pointer brush)))
@@ -104,6 +108,8 @@
   (let ((brush* (brush-pointer brush)))
     ((foreign-lambda* void ((uiDrawBrush* br) (double b)) "br->B = b;") brush* b)))
 
+(define brush-b (getter-with-setter brush-b brush-b-set!))
+
 (define (brush-a brush)
   (let ((brush* (brush-pointer brush)))
     ((foreign-lambda* double ((uiDrawBrush* br)) "C_return(br->A);") brush*)))
@@ -111,6 +117,8 @@
 (define (brush-a-set! brush a)
   (let ((brush* (brush-pointer brush)))
     ((foreign-lambda* void ((uiDrawBrush* br) (double a)) "br->A = a;") brush* a)))
+
+(define brush-a (getter-with-setter brush-a brush-a-set!))
 
 ;; stroke params
 

@@ -512,6 +512,8 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
   (let ((spinbox* (widget-pointer spinbox)))
     (uiSpinboxSetValue spinbox* value)))
 
+(define spinbox-value (getter-with-setter spinbox-value spinbox-value-set!))
+
 (define (new-slider min max)
   (define-widget 'slider uiNewSlider min max))
 
@@ -523,6 +525,8 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
   (let ((slider* (widget-pointer slider)))
     (uiSliderSetValue slider* value)))
 
+(define slider-value (getter-with-setter slider-value slider-value-set!))
+
 (define (new-progress-bar)
   (define-widget 'progress-bar uiNewProgressBar))
 
@@ -533,6 +537,8 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
 (define (progress-bar-value-set! progress-bar value)
   (let ((progress-bar* (widget-pointer progress-bar)))
     (uiProgressBarSetValue progress-bar* value)))
+
+(define progress-bar-value (getter-with-setter progress-bar-value progress-bar-value-set!))
 
 (define (new-horizontal-separator)
   (define-widget 'horizontal-separator uiNewHorizontalSeparator))
@@ -610,6 +616,8 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
 (define (color-button-color-set! color-button r g b a)
   (let ((color-button* (widget-pointer color-button)))
     (uiColorButtonSetColor color-button* r g b a)))
+
+(define color-button-color (getter-with-setter color-button-color color-button-color-set!))
 
 (define (new-form)
   (let ((form (define-widget 'form uiNewForm)))
