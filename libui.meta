@@ -4,5 +4,6 @@
  (category ui)
  (depends matchable)
  (foreign-depends "libui")
- (files "libui.scm" "libui.meta" "libui.setup" "libui.release-info"
+ (files "libui.scm" "libui-draw.scm"
+        "libui.meta" "libui.setup" "libui.release-info"
         "LICENSE" "README.rst"))
