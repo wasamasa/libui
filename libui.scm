@@ -736,7 +736,7 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
      ((tag children ...)
       children)))
 
-  (define (find-handler-pair attributes)
+  (define (find-handler-list attributes)
     (find
      (lambda (pair)
        (memv (car pair) '(should-quit closing clicked changed)))
@@ -751,7 +751,7 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
            (read-only? (attribute-ref 'read-only? attributes))
            (min (attribute-ref 'min attributes))
            (max (attribute-ref 'max attributes))
-           (handler-pair (find-handler-pair attributes))
+           (handler-list (find-handler-list attributes))
            (widget
             (case tag
               ((window)
@@ -917,8 +917,8 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
                                    'widgets))))))
         (when id
           (widget-id-set! widget id))
-        (when handler-pair
-          (handler-set! widget (car handler-pair) (cadr handler-pair)))
+        (when handler-list
+          (handler-set! widget (car handler-list) (cadr handler-list) (cddr handler-list)))
         widget))
 
   (match sxml
