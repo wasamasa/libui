@@ -759,10 +759,12 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
                       (width (attribute-ref 'width attributes))
                       (height (attribute-ref 'height attributes))
                       (menubar? (attribute-ref 'menubar? attributes))
-                      (window (new-window title width height menubar?)))
+                      (window (new-window title width height menubar?))
+                      (child (and (pair? children) (car children))))
                  (when margined?-pair
                    (window-margined?-set! window (cadr margined?-pair)))
-                 (window-child-set! window (->control (widgets (car children))))
+                 (when child
+                   (window-child-set! window (->control (widgets child))))
                  window))
               ((button)
                (new-button text))
@@ -868,10 +870,11 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
                  tab))
               ((group)
                (let ((group (new-group text))
-                     (child (car children)))
-                 (group-child-set! group (->control (widgets child)))
+                     (child (and (pair? children) (car children))))
                  (when margined?-pair
                    (group-margined?-set! group (cadr margined?-pair)))
+                 (when child
+                   (group-child-set! group (->control (widgets child))))
                  group))
 
               ((form)
