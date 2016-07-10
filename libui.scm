@@ -398,7 +398,12 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
              area-handler*))
          (area-handler (make-area-handler area-handler* draw-handler mouse-event-handler mouse-crossed-handler drag-broken-handler key-event-handler)))
     (hash-table-set! area-table area-handler* area-handler)
-    (set-finalizer! area-handler free)))
+    (set-finalizer! area-handler area-handler-free!)))
+
+(define (area-handler-free! area-handler)
+  (and-let* ((area-handler* (area-handler-pointer area-handler)))
+    (free area-handler)
+    (area-handler-pointer-set! area-handler #f)))
 
 ;;; API
 
