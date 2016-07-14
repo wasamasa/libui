@@ -921,7 +921,7 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
         (when id
           (widget-id-set! widget id))
         (when handler-list
-          (handler-set! widget (car handler-list) (cadr handler-list) (cddr handler-list)))
+          (apply handler-set! widget handler-list))
         widget))
 
   (match sxml
