@@ -4,10 +4,10 @@
    margined? padded?
    widget? widget-id widget-type widget-handlers
    new-window window-child-set! window-margined?-set!
-   new-button
+   new-button button-text button-text-set!
    new-horizontal-box new-vertical-box box-append! box-padded?-set!
    new-checkbox
-   new-entry new-password-entry new-search-entry entry-text-set! entry-read-only?-set!
+   new-entry new-password-entry new-search-entry entry-text entry-text-set! entry-read-only?-set!
    new-label
    new-tab tab-append! tab-margined?-set!
    new-group group-child-set! group-margined?-set!
@@ -176,6 +176,8 @@
 (define uiWindowSetMargined (foreign-lambda void "uiWindowSetMargined" uiWindow* bool))
 
 (define uiNewButton (foreign-lambda uiButton* "uiNewButton" nonnull-c-string))
+(define uiButtonText (foreign-lambda c-string* "uiButtonText" uiButton*))
+(define uiButtonSetText (foreign-lambda void "uiButtonSetText" uiButton* nonnull-c-string))
 (define uiButtonOnClicked (foreign-lambda void "uiButtonOnClicked" uiButton* (function void (uiButton* c-pointer)) c-pointer))
 
 (define uiNewHorizontalBox (foreign-lambda uiBox* "uiNewHorizontalBox"))
@@ -188,6 +190,7 @@
 (define uiNewEntry (foreign-lambda uiEntry* "uiNewEntry"))
 (define uiNewPasswordEntry (foreign-lambda uiEntry* "uiNewPasswordEntry"))
 (define uiNewSearchEntry (foreign-lambda uiEntry* "uiNewSearchEntry"))
+(define uiEntryText (foreign-lambda c-string* "uiEntryText" uiEntry*))
 (define uiEntrySetText (foreign-lambda void "uiEntrySetText" uiEntry* nonnull-c-string))
 (define uiEntrySetReadOnly (foreign-lambda void "uiEntrySetReadOnly" uiEntry* bool))
 
@@ -452,6 +455,16 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
 (define (new-button text)
   (define-widget 'button uiNewButton text))
 
+(define (button-text button)
+  (let ((button* (widget-pointer button)))
+    (uiButtonText button*)))
+
+(define (button-text-set! button text)
+  (let ((button* (widget-pointer button)))
+    (uiButtonSetText button* text)))
+
+(define button-text (getter-with-setter button-text button-text-set!))
+
 (define (new-checkbox text)
   (define-widget 'checkbox uiNewCheckbox text))
 
@@ -464,9 +477,15 @@ char *libuiFileDialog(uiWindow* parent, char *(*f)(uiWindow* parent)) {
 (define (new-search-entry)
   (define-widget 'search-entry uiNewSearchEntry))
 
+(define (entry-text entry)
+  (let ((entry* (widget-pointer entry)))
+    (uiEntryText entry*)))
+
 (define (entry-text-set! entry text)
   (let ((entry* (widget-pointer entry)))
     (uiEntrySetText entry* text)))
+
+(define entry-text (getter-with-setter entry-text entry-text-set!))
 
 (define (entry-read-only?-set! entry read-only?)
   (let ((entry* (widget-pointer entry)))
