@@ -1,8 +1,8 @@
-(compile -s -O3 -d1 "libui.scm" -J -lui)
-(compile -s "libui.import.scm")
-
 (compile -s -O3 -d1 "libui-draw.scm" -J -lui)
 (compile -s "libui-draw.import.scm")
+
+(compile -s -O3 -d1 "libui.scm" -J -lui)
+(compile -s "libui.import.scm")
 
 (install-extension
  'libui
