@@ -1,5 +1,5 @@
 (repo git "git://github.com/wasamasa/{egg-name}.git")
-(uri meta-file "https://raw.githubusercontent.com/wasamasa/{egg-name}/master/{egg-name}.meta")
+(uri meta-file "https://raw.githubusercontent.com/wasamasa/{egg-name}/{egg-release}/{egg-name}.meta")
 (release "0.1")
 (release "0.2")
 (release "0.3")
